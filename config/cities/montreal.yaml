@@ -1,0 +1,10 @@
+name: Montréal
+gtfs_url: https://www.stm.info/sites/default/files/gtfs/gtfs_stm.zip
+gtfs_rt:
+  trip_updates: https://api.stm.info/pub/od/gtfs-rt/ic/v2/tripUpdates
+  alerts: https://api.stm.info/pub/od/i3/v2/messages/etatservice
+bbox:
+  south: 45.410
+  west: -73.976
+  north: 45.705
+  east: -73.476

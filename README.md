@@ -173,9 +173,6 @@ MAPLIBRE_STYLE_URL=https://...   # Fond de carte (ex. MapTiler, Stadia)
 
 - Conveyal R5 / r5py — moteur de calcul d'accessibilité multimodale
 - OpenTripPlanner — alternative open source pour le routage TC
-- Levinson, D. et al. (2020). *Transport Access Manual*. University of Sydney.
-- El-Geneidy, A. et al. (2016). The cost of equity: Assessing transit accessibility and social disparity using total travel cost. *Transportation Research Part A*.
-- Boisjoly, G. & El-Geneidy, A. (2017). How to get there? A critical assessment of accessibility objectives and indicators in metropolitan transportation plans. *Transport Policy*.
 
 ---
 

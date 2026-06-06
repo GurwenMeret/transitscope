@@ -5,16 +5,26 @@ import "./App.css";
 
 const API_URL = "http://localhost:5062";
 
+const MODE_COLORS: Record<string, string> = {
+  transit: "#7c4dff",
+  bicycle: "#00c853",
+  walk: "#ff6d00",
+};
+
+const MODE_LABELS: Record<string, string> = {
+  transit: "Transport en commun",
+  bicycle: "Vélo",
+  walk: "Marche",
+};
+
 interface Leg {
   mode: string;
   distance: number;
 }
-
 interface Itinerary {
   duration: number;
   legs: Leg[];
 }
-
 interface AccessibilityCategory {
   category: string;
   transit: number;
@@ -25,6 +35,7 @@ interface AccessibilityCategory {
 export default function App() {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
+  const marker = useRef<maplibregl.Marker | null>(null);
   const [time, setTime] = useState("08:00");
   const [itineraries, setItineraries] = useState<Itinerary[]>([]);
   const [accessibility, setAccessibility] = useState<AccessibilityCategory[]>(
@@ -34,39 +45,101 @@ export default function App() {
   const [selectedPoint, setSelectedPoint] = useState<
     { lat: number; lon: number } | null
   >(null);
+  const [visibleModes, setVisibleModes] = useState<Record<string, boolean>>({
+    transit: true,
+    bicycle: true,
+    walk: true,
+  });
 
   useEffect(() => {
     if (map.current || !mapContainer.current) return;
 
     map.current = new maplibregl.Map({
       container: mapContainer.current,
-      style: "https://demotiles.maplibre.org/style.json",
+      style: "https://tiles.openfreemap.org/styles/liberty",
       center: [-73.5690, 45.5088],
       zoom: 12,
     });
 
     map.current.addControl(new maplibregl.NavigationControl());
 
+    map.current.on("load", () => {
+      // Ajouter les sources et couches pour chaque mode
+      for (const mode of ["transit", "bicycle", "walk"]) {
+        map.current!.addSource(`isochrone-${mode}`, {
+          type: "geojson",
+          data: { type: "FeatureCollection", features: [] },
+        });
+
+        map.current!.addLayer({
+          id: `isochrone-${mode}-fill`,
+          type: "fill",
+          source: `isochrone-${mode}`,
+          paint: {
+            "fill-color": MODE_COLORS[mode],
+            "fill-opacity": 0.2,
+          },
+        });
+
+        map.current!.addLayer({
+          id: `isochrone-${mode}-outline`,
+          type: "line",
+          source: `isochrone-${mode}`,
+          paint: {
+            "line-color": MODE_COLORS[mode],
+            "line-width": 2,
+            "line-opacity": 0.8,
+          },
+        });
+      }
+    });
+
     map.current.on("click", async (e) => {
       const { lat, lng: lon } = e.lngLat;
       setSelectedPoint({ lat, lon });
       setLoading(true);
 
+      // Marqueur au point cliqué
+      if (marker.current) marker.current.remove();
+      marker.current = new maplibregl.Marker({ color: "#ff1744" })
+        .setLngLat([lon, lat])
+        .addTo(map.current!);
+
+      const hour = parseInt(time.split(":")[0]);
+
       try {
-        const [isoRes, accRes] = await Promise.all([
+        const [isoRes, accRes, polygonRes] = await Promise.all([
           fetch(
             `${API_URL}/api/isochrone?lat=${lat}&lon=${lon}&time=${time}:00&maxMinutes=30`,
           ),
           fetch(
             `${API_URL}/api/accessibility?lat=${lat}&lon=${lon}&city=montreal&time=${time}:00`,
           ),
+          fetch(
+            `${API_URL}/api/isochrones/nearest?lat=${lat}&lon=${lon}&hour=${hour}&maxMinutes=30`,
+          ),
         ]);
 
         const isoData = await isoRes.json();
         const accData = await accRes.json();
+        const polygonData = await polygonRes.json();
 
         setItineraries(isoData?.data?.plan?.itineraries ?? []);
         setAccessibility(accData?.categories ?? []);
+
+        // Mettre à jour les polygones sur la carte
+        for (const feature of polygonData.features) {
+          const mode = feature.properties.mode;
+          const source = map.current!.getSource(
+            `isochrone-${mode}`,
+          ) as maplibregl.GeoJSONSource;
+          if (source) {
+            source.setData({
+              type: "FeatureCollection",
+              features: [feature],
+            });
+          }
+        }
       } catch (err) {
         console.error(err);
       } finally {
@@ -75,12 +148,29 @@ export default function App() {
     });
   }, []);
 
+  const toggleMode = (mode: string) => {
+    const newVisible = { ...visibleModes, [mode]: !visibleModes[mode] };
+    setVisibleModes(newVisible);
+
+    if (map.current) {
+      const visibility = newVisible[mode] ? "visible" : "none";
+      map.current.setLayoutProperty(
+        `isochrone-${mode}-fill`,
+        "visibility",
+        visibility,
+      );
+      map.current.setLayoutProperty(
+        `isochrone-${mode}-outline`,
+        "visibility",
+        visibility,
+      );
+    }
+  };
+
   return (
     <div style={{ display: "flex", height: "100vh", width: "100vw" }}>
-      {/* Carte */}
       <div ref={mapContainer} style={{ flex: 1 }} />
 
-      {/* Panel latéral */}
       <div
         style={{
           width: "340px",
@@ -109,6 +199,38 @@ export default function App() {
             onChange={(e) => setTime(`${e.target.value.padStart(2, "0")}:00`)}
             style={{ width: "100%", marginTop: "8px" }}
           />
+        </div>
+
+        {/* Toggle modes */}
+        <div style={{ marginBottom: "20px" }}>
+          <p style={{ fontSize: "13px", color: "#aaa", marginBottom: "8px" }}>
+            Isochrones visibles :
+          </p>
+          {Object.entries(MODE_LABELS).map(([mode, label]) => (
+            <button
+              key={mode}
+              onClick={() => toggleMode(mode)}
+              style={{
+                display: "block",
+                width: "100%",
+                marginBottom: "6px",
+                padding: "8px 12px",
+                background: visibleModes[mode]
+                  ? MODE_COLORS[mode] + "33"
+                  : "#333",
+                border: `2px solid ${
+                  visibleModes[mode] ? MODE_COLORS[mode] : "#555"
+                }`,
+                borderRadius: "6px",
+                color: visibleModes[mode] ? MODE_COLORS[mode] : "#888",
+                cursor: "pointer",
+                fontSize: "13px",
+                textAlign: "left",
+              }}
+            >
+              ● {label}
+            </button>
+          ))}
         </div>
 
         {loading && <p style={{ color: "#4fc3f7" }}>Calcul en cours...</p>}

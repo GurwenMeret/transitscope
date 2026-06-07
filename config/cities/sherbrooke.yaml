@@ -1,0 +1,11 @@
+name: Sherbrooke
+gtfs_url: https://www.donneesquebec.ca/recherche/dataset/e82b9141-09d8-4f85-af37-d84937bc2503/resource/b7f43b2a-2557-4e3b-ba12-5a5c6d4de5b1/download/gtfssherbrooke.zip
+gtfs_rt:
+  trip_updates: null
+  alerts: null
+bbox:
+  south: 45.299
+  west: -72.108
+  north: 45.523
+  east: -71.802
+polygon: config/polygons/sherbrooke.geojson

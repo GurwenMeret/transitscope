@@ -1,0 +1,11 @@
+name: Québec
+gtfs_url: https://cdn.rtcquebec.ca/Site_Internet/DonneesOuvertes/googletransit.zip
+gtfs_rt:
+  trip_updates: null
+  alerts: null
+bbox:
+  south: 46.572
+  west: -71.813
+  north: 47.306
+  east: -70.669
+polygon: config/polygons/grand_quebec.geojson

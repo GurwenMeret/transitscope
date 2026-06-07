@@ -4,7 +4,8 @@ gtfs_rt:
   trip_updates: https://api.stm.info/pub/od/gtfs-rt/ic/v2/tripUpdates
   alerts: https://api.stm.info/pub/od/i3/v2/messages/etatservice
 bbox:
-  south: 45.410
-  west: -73.976
-  north: 45.705
-  east: -73.476
+  south: 45.228
+  west: -74.266
+  north: 45.988
+  east: -73.062
+polygon: config/polygons/grand_montreal.geojson
